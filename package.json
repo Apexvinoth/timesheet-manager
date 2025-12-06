@@ -1,0 +1,19 @@
+{
+  "name": "timesheet-app",
+  "version": "1.0.0",
+  "description": "Employee timesheet management system with task tracking and performance analytics",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["timesheet", "task-tracking", "employee-management"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "bcrypt": "^5.1.1",
+    "sqlite3": "^5.1.6"
+  }
+}

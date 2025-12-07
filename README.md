@@ -1,95 +1,220 @@
-# Timesheet Application - Setup Instructions
+# Timesheet Manager
 
-## Prerequisites
+A modern, full-featured timesheet management application built with Node.js, Express, and SQLite. Designed for teams to track time spent on tasks with separate dashboards for employees and administrators.
 
-Node.js is required to run this application. The installation failed because Node.js is not installed on your system.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg)
 
-## Installation Steps
+## 🌟 Features
 
-1. **Install Node.js**:
-   - Download Node.js from: https://nodejs.org/
-   - Install the LTS (Long Term Support) version
-   - This will also install npm (Node Package Manager)
+### For Employees
+- ✅ **Time Entry Management**: Add, edit, and delete timesheet entries
+- 📊 **Personal Dashboard**: View your own time entries and statistics
+- 📈 **Weekly Summary**: See total hours worked per week
+- 🎯 **Task Selection**: Choose from active tasks assigned by admins
 
-2. **Install Dependencies**:
+### For Administrators
+- 👥 **User Management**: Create, edit, and delete user accounts
+- 📋 **Task Management**: Manage tasks with estimated hours
+- 📊 **Analytics Dashboard**: 
+  - View total hours across all employees
+  - Hours by employee (bar chart)
+  - Hours by task (doughnut chart)
+  - Daily hours trend (line chart - last 14 days)
+- ⏱️ **Time Tracking**: Compare estimated vs actual hours with variance indicators
+- 🔍 **Timesheet Overview**: Filter and view all employee timesheets
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v14 or higher)
+- npm (comes with Node.js)
+
+### Installation
+
+1. **Clone the repository**
    ```bash
-   cd C:\Users\Vinoth\.gemini\antigravity\scratch\timesheet-app
+   git clone https://github.com/Apexvinoth/timesheet-manager.git
+   cd timesheet-manager
+   ```
+
+2. **Install dependencies**
+   ```bash
    npm install
    ```
 
-3. **Start the Application**:
+3. **Initialize the database**
+   ```bash
+   npm run migrate
+   ```
+
+4. **Start the server**
    ```bash
    npm start
    ```
 
-4. **Access the Application**:
-   - Open your browser and go to: http://localhost:3000
-   - Login with default admin credentials:
+5. **Access the application**
+   - Open your browser and navigate to `http://localhost:3000`
+   - Default admin credentials:
      - Username: `admin`
      - Password: `admin123`
 
-## Features
-
-### For Employees:
-- Log time entries for tasks
-- View personal timesheet history
-- View performance analytics with charts
-- Track hours by task and date
-
-### For Admins:
-- Manage users (create, edit, delete)
-- Configure tasks (create, edit, delete)
-- View all employee timesheets
-- Analyze team performance with charts:
-  - Hours by employee
-  - Hours by task
-  - Daily hours trend
-- Filter and export timesheet data
-
-## Default Credentials
-
-**Admin Account:**
-- Username: `admin`
-- Password: `admin123`
-
-**Important:** Change the admin password after first login!
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 timesheet-app/
 ├── database/
-│   ├── schema.sql          # Database schema
-│   ├── db.js              # Database connection
-│   └── timesheet.db       # SQLite database (created on first run)
+│   ├── db.js              # Database connection and query helpers
+│   ├── migrate.js         # Database migration script
+│   └── schema.sql         # Database schema definition
 ├── middleware/
-│   ├── auth.js            # Authentication middleware
-│   └── admin.js           # Admin authorization middleware
-├── routes/
-│   ├── auth.js            # Authentication routes
-│   ├── users.js           # User management routes
-│   ├── tasks.js           # Task management routes
-│   └── timesheet.js       # Timesheet and analytics routes
+│   ├── admin.js           # Admin authorization middleware
+│   └── auth.js            # Authentication middleware
 ├── public/
 │   ├── css/
-│   │   └── style.css      # Design system and styles
+│   │   └── style.css      # Application styles
 │   ├── js/
-│   │   └── app.js         # Shared JavaScript utilities
-│   ├── index.html         # Login page
+│   │   └── app.js         # Shared frontend utilities
+│   ├── admin.html         # Admin dashboard
 │   ├── dashboard.html     # Employee dashboard
-│   └── admin.html         # Admin dashboard
-├── server.js              # Main server file
-└── package.json           # Dependencies and scripts
+│   └── index.html         # Login page
+├── routes/
+│   ├── auth.js            # Authentication routes
+│   ├── tasks.js           # Task management routes
+│   ├── timesheet.js       # Timesheet routes
+│   └── users.js           # User management routes
+├── .gitignore             # Git ignore rules
+├── package.json           # Project dependencies
+├── README.md              # This file
+└── server.js              # Express server entry point
 ```
 
-## Technology Stack
+## 🎨 Screenshots
 
-- **Backend**: Node.js with Express.js
-- **Database**: SQLite
-- **Frontend**: HTML, CSS, JavaScript
-- **Charts**: Chart.js
-- **Authentication**: Session-based with bcrypt password hashing
+### Employee Dashboard
+Track your time entries and view personal statistics.
 
-## Support
+### Admin Dashboard
+Comprehensive analytics and management tools for administrators.
 
-For issues or questions, please refer to the implementation plan or contact your system administrator.
+## 🔧 Configuration
+
+### Database
+The application uses SQLite for data storage. The database file is created automatically at `database/timesheet.db` when you run the migration.
+
+### Port Configuration
+By default, the server runs on port 3000. You can change this in `server.js`:
+```javascript
+const PORT = process.env.PORT || 3000;
+```
+
+## 📊 Database Schema
+
+### Tables
+- **users**: User accounts (employees and admins)
+- **tasks**: Available tasks with estimated hours
+- **timesheet_entries**: Individual time entries by employees
+
+## 🛠️ API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user
+
+### Users (Admin only)
+- `GET /api/users` - List all users
+- `POST /api/users` - Create new user
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
+
+### Tasks
+- `GET /api/tasks` - List all tasks (with actual hours)
+- `POST /api/tasks` - Create task (admin only)
+- `PUT /api/tasks/:id` - Update task (admin only)
+- `DELETE /api/tasks/:id` - Delete task (admin only)
+
+### Timesheets
+- `GET /api/timesheet` - Get timesheet entries (filtered by user role)
+- `POST /api/timesheet` - Create timesheet entry
+- `PUT /api/timesheet/:id` - Update timesheet entry
+- `DELETE /api/timesheet/:id` - Delete timesheet entry
+- `GET /api/timesheet/analytics` - Get analytics data (admin only)
+
+## 🎯 Key Features Explained
+
+### Time Tracking with Variance
+Admins can set **estimated hours** for each task. The system automatically calculates **actual hours** from employee entries and displays:
+- 🔴 **Red ▲**: Over estimated (actual > estimated)
+- 🟢 **Green ▼**: Under estimated (actual < estimated)
+- ⚪ **Gray ●**: On track (actual = estimated)
+
+### Role-Based Access Control
+- **Employees**: Can only view and manage their own timesheet entries
+- **Admins**: Full access to all features including user management, task management, and analytics
+
+### Real-time Analytics
+The admin dashboard provides real-time insights with interactive charts powered by Chart.js.
+
+## 🔐 Security Features
+
+- Password hashing with bcrypt
+- Session-based authentication
+- Role-based authorization middleware
+- SQL injection prevention with parameterized queries
+
+## 🚀 Deployment
+
+### Deploy to Production
+
+1. **Set environment variables**
+   ```bash
+   export NODE_ENV=production
+   export PORT=3000
+   ```
+
+2. **Run migration**
+   ```bash
+   npm run migrate
+   ```
+
+3. **Start the server**
+   ```bash
+   npm start
+   ```
+
+### Deploy to Cloud Platforms
+
+#### Heroku
+```bash
+heroku create your-app-name
+git push heroku master
+heroku run npm run migrate
+```
+
+#### Railway / Render
+- Connect your GitHub repository
+- Set build command: `npm install`
+- Set start command: `npm start`
+- Add migration as a one-time job: `npm run migrate`
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+## 👨‍💻 Author
+
+**Vinoth**
+- GitHub: [@Apexvinoth](https://github.com/Apexvinoth)
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!
+
+## 📧 Support
+
+If you have any questions or need help, please open an issue on GitHub.
+
+---
+
+**Built with ❤️ using Node.js, Express, and SQLite**

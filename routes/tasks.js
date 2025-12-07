@@ -11,9 +11,15 @@ router.use(requireAuth);
 // Get all tasks (all authenticated users)
 router.get('/', async (req, res) => {
     try {
-        const tasks = await getAll(
-            'SELECT * FROM tasks ORDER BY created_at DESC'
-        );
+        const tasks = await getAll(`
+            SELECT 
+                t.*,
+                COALESCE(SUM(te.hours_spent), 0) as actual_hours
+            FROM tasks t
+            LEFT JOIN timesheet_entries te ON t.id = te.task_id
+            GROUP BY t.id
+            ORDER BY t.created_at DESC
+        `);
         res.json(tasks);
     } catch (error) {
         console.error('Get tasks error:', error);

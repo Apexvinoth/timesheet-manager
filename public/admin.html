@@ -82,10 +82,10 @@
 
         <!-- Tabs -->
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('analytics')">Analytics</button>
-            <button class="tab" onclick="switchTab('users')">Users</button>
-            <button class="tab" onclick="switchTab('tasks')">Tasks</button>
-            <button class="tab" onclick="switchTab('timesheets')">All Timesheets</button>
+            <button class="tab active" onclick="switchTab('analytics', this)">Analytics</button>
+            <button class="tab" onclick="switchTab('users', this)">Users</button>
+            <button class="tab" onclick="switchTab('tasks', this)">Tasks</button>
+            <button class="tab" onclick="switchTab('timesheets', this)">All Timesheets</button>
         </div>
 
         <!-- Analytics Tab -->
@@ -177,6 +177,9 @@
                             <tr>
                                 <th>Task Name</th>
                                 <th>Description</th>
+                                <th>Estimated Hrs</th>
+                                <th>Actual Hrs</th>
+                                <th>Variance</th>
                                 <th>Status</th>
                                 <th>Created</th>
                                 <th>Actions</th>
@@ -184,7 +187,7 @@
                         </thead>
                         <tbody id="tasksTableBody">
                             <tr>
-                                <td colspan="5" class="text-center text-muted">Loading...</td>
+                                <td colspan="8" class="text-center text-muted">Loading...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -271,125 +274,170 @@
                 <div class="flex gap-md">
                     <button type="submit" class="btn btn-primary">Save</button>
                     <button type="button" onclick="closeModal('userModal')" class="btn btn-secondary">Cancel</button>
-                    let users = [];
-                    let tasks = [];
-                    let timesheets = [];
-                    let employeeChart = null;
-                    let taskChart = null;
-                    let dailyChart = null;
+                </div>
+            </form>
+        </div>
+    </div>
 
-                    // Initialize
-                    async function init() {
-                    currentUser = await checkAuth();
-                    if (!currentUser) {
-                    window.location.href = '/';
-                    return;
-                    }
+    <!-- Task Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <h3 id="taskModalTitle">Add Task</h3>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
 
-                    if (currentUser.role !== 'admin') {
-                    window.location.href = '/dashboard';
-                    return;
-                    }
+                <div class="form-group">
+                    <label class="form-label">Task Name</label>
+                    <input type="text" id="taskName" class="form-input" required>
+                </div>
 
-                    document.getElementById('userName').textContent = currentUser.fullName;
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="taskDescription" class="form-input" rows="3"></textarea>
+                </div>
 
-                    await loadUsers();
-                    await loadTasks();
-                    await loadAnalytics();
-                    await loadTimesheets();
+                <div class="form-group">
+                    <label class="form-label">Estimated Hours</label>
+                    <input type="number" id="taskEstimatedHours" class="form-input" min="0" step="0.5" placeholder="0">
+                    <small class="text-muted">Planned hours for this task</small>
+                </div>
 
-                    // Populate filter dropdown
-                    const filterSelect = document.getElementById('filterUser');
-                    users.filter(u => u.role === 'employee').forEach(user => {
-                    const option = document.createElement('option');
-                    option.value = user.id;
-                    option.textContent = user.full_name;
-                    filterSelect.appendChild(option);
-                    });
-                    }
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select id="taskStatus" class="form-select" required>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
 
-                    // Tab switching
-                    function switchTab(tabName) {
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                <div class="flex gap-md">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" onclick="closeModal('taskModal')" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-                    event.target.classList.add('active');
-                    document.getElementById(tabName + 'Tab').classList.add('active');
-                    }
+    <script src="/js/app.js"></script>
+    <script>
+        let currentUser = null;
+        let users = [];
+        let tasks = [];
+        let timesheets = [];
+        let employeeChart = null;
+        let taskChart = null;
+        let dailyChart = null;
 
-                    // Load users
-                    async function loadUsers() {
-                    try {
-                    users = await apiCall('/api/users');
-                    renderUsers();
-                    } catch (error) {
-                    showAlert('Failed to load users', 'error');
-                    }
-                    }
+        // Initialize
+        async function init() {
+            currentUser = await checkAuth();
+            if (!currentUser) {
+                window.location.href = '/';
+                return;
+            }
 
-                    // Load tasks
-                    async function loadTasks() {
-                    try {
-                    tasks = await apiCall('/api/tasks');
-                    renderTasks();
-                    } catch (error) {
-                    showAlert('Failed to load tasks', 'error');
-                    }
-                    }
+            if (currentUser.role !== 'admin') {
+                window.location.href = '/dashboard';
+                return;
+            }
 
-                    // Load analytics
-                    async function loadAnalytics() {
-                    try {
-                    const analytics = await apiCall('/api/timesheet/analytics');
+            document.getElementById('userName').textContent = currentUser.fullName;
 
-                    // Update stats
-                    document.getElementById('totalHours').textContent = formatHours(analytics.summary.total_hours || 0);
-                    document.getElementById('totalEntries').textContent = analytics.summary.total_entries || 0;
-                    document.getElementById('totalEmployees').textContent = users.filter(u => u.role ===
+            await loadUsers();
+            await loadTasks();
+            await loadAnalytics();
+            await loadTimesheets();
+
+            // Populate filter dropdown
+            const filterSelect = document.getElementById('filterUser');
+            users.filter(u => u.role === 'employee').forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.full_name;
+                filterSelect.appendChild(option);
+            });
+        }
+
+        // Tab switching
+        function switchTab(tabName, element) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+            element.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        // Load users
+        async function loadUsers() {
+            try {
+                users = await apiCall('/api/users');
+                renderUsers();
+            } catch (error) {
+                showAlert('Failed to load users', 'error');
+            }
+        }
+
+        // Load tasks
+        async function loadTasks() {
+            try {
+                tasks = await apiCall('/api/tasks');
+                renderTasks();
+            } catch (error) {
+                showAlert('Failed to load tasks', 'error');
+            }
+        }
+
+        // Load analytics
+        async function loadAnalytics() {
+            try {
+                const analytics = await apiCall('/api/timesheet/analytics');
+
+                // Update stats
+                document.getElementById('totalHours').textContent = formatHours(analytics.summary.total_hours || 0);
+                document.getElementById('totalEntries').textContent = analytics.summary.total_entries || 0;
+                document.getElementById('totalEmployees').textContent = users.filter(u => u.role ===
                     'employee').length;
-                    document.getElementById('activeTasks').textContent = tasks.filter(t => t.status ===
+                document.getElementById('activeTasks').textContent = tasks.filter(t => t.status ===
                     'active').length;
 
-                    // Render charts
-                    renderEmployeeChart(analytics.hoursByUser);
-                    renderTaskChart(analytics.hoursByTask);
-                    renderDailyChart(analytics.hoursByDate);
-                    } catch (error) {
-                    showAlert('Failed to load analytics', 'error');
-                    }
-                    }
+                // Render charts
+                renderEmployeeChart(analytics.hoursByUser);
+                renderTaskChart(analytics.hoursByTask);
+                renderDailyChart(analytics.hoursByDate);
+            } catch (error) {
+                showAlert('Failed to load analytics', 'error');
+            }
+        }
 
-                    // Load timesheets
-                    async function loadTimesheets() {
-                    try {
-                    const userId = document.getElementById('filterUser').value;
-                    const startDate = document.getElementById('filterStartDate').value;
-                    const endDate = document.getElementById('filterEndDate').value;
+        // Load timesheets
+        async function loadTimesheets() {
+            try {
+                const userId = document.getElementById('filterUser').value;
+                const startDate = document.getElementById('filterStartDate').value;
+                const endDate = document.getElementById('filterEndDate').value;
 
-                    let url = '/api/timesheet?';
-                    if (userId) url += `userId=${userId}&`;
-                    if (startDate) url += `startDate=${startDate}&`;
-                    if (endDate) url += `endDate=${endDate}&`;
+                let url = '/api/timesheet?';
+                if (userId) url += `userId=${userId}&`;
+                if (startDate) url += `startDate=${startDate}&`;
+                if (endDate) url += `endDate=${endDate}&`;
 
-                    timesheets = await apiCall(url);
-                    renderTimesheets();
-                    } catch (error) {
-                    showAlert('Failed to load timesheets', 'error');
-                    }
-                    }
+                timesheets = await apiCall(url);
+                renderTimesheets();
+            } catch (error) {
+                showAlert('Failed to load timesheets', 'error');
+            }
+        }
 
-                    // Render users
-                    function renderUsers() {
-                    const tbody = document.getElementById('usersTableBody');
+        // Render users
+        function renderUsers() {
+            const tbody = document.getElementById('usersTableBody');
 
-                    if (users.length === 0) {
-                    tbody.innerHTML = '<tr>
-                        <td colspan="5" class="text-center text-muted">No users</td>
-                    </tr>';
-                    return;
-                    }
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No users</td></tr>';
+                return;
+            }
 
-                    tbody.innerHTML = users.map(user => `
+            tbody.innerHTML = users.map(user => `
                     <tr>
                         <td>${user.username}</td>
                         <td>${user.full_name}</td>
@@ -404,48 +452,65 @@
                         </td>
                     </tr>
                     `).join('');
-                    }
+        }
 
-                    // Render tasks
-                    function renderTasks() {
-                    const tbody = document.getElementById('tasksTableBody');
+        // Render tasks
+        function renderTasks() {
+            const tbody = document.getElementById('tasksTableBody');
 
-                    if (tasks.length === 0) {
-                    tbody.innerHTML = '<tr>
-                        <td colspan="5" class="text-center text-muted">No tasks</td>
-                    </tr>';
-                    return;
-                    }
+            if (tasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No tasks</td></tr>';
+                return;
+            }
 
-                    tbody.innerHTML = tasks.map(task => `
+            tbody.innerHTML = tasks.map(task => {
+                const estimated = parseFloat(task.estimated_hours) || 0;
+                const actual = parseFloat(task.actual_hours) || 0;
+                const variance = actual - estimated;
+                const variancePercent = estimated > 0 ? ((variance / estimated) * 100).toFixed(1) : 0;
+
+                // Color coding: green if under, red if over, gray if on track
+                let varianceClass = 'text-secondary';
+                let varianceIcon = '●';
+                if (variance > 0) {
+                    varianceClass = 'text-danger';  // Over estimated
+                    varianceIcon = '▲';
+                } else if (variance < 0) {
+                    varianceClass = 'text-success';  // Under estimated
+                    varianceIcon = '▼';
+                }
+
+                return `
                     <tr>
                         <td>${task.task_name}</td>
                         <td>${task.description || '-'}</td>
-                        <td><span
-                                class="badge badge-${task.status === 'active' ? 'success' : 'danger'}">${task.status}</span>
+                        <td>${formatHours(estimated)} hrs</td>
+                        <td>${formatHours(actual)} hrs</td>
+                        <td class="${varianceClass}">
+                            ${varianceIcon} ${formatHours(Math.abs(variance))} hrs
+                            ${estimated > 0 ? `(${variancePercent > 0 ? '+' : ''}${variancePercent}%)` : ''}
                         </td>
+                        <td><span class="badge badge-${task.status === 'active' ? 'success' : 'danger'}">${task.status}</span></td>
                         <td>${formatDate(task.created_at)}</td>
                         <td>
-                            <button onclick='editTask(${JSON.stringify(task)})'
-                                class="btn btn-secondary btn-sm">Edit</button>
+                            <button onclick='editTask(${JSON.stringify(task)})' class="btn btn-secondary btn-sm">Edit</button>
                             <button onclick="deleteTask(${task.id})" class="btn btn-danger btn-sm">Delete</button>
                         </td>
                     </tr>
-                    `).join('');
-                    }
+                `;
+            }).join('');
+        }
 
-                    // Render timesheets
-                    function renderTimesheets() {
-                    const tbody = document.getElementById('timesheetsTableBody');
+        // Render timesheets
+        function renderTimesheets() {
+            const tbody = document.getElementById('timesheetsTableBody');
 
-                    if (timesheets.length === 0) {
-                    tbody.innerHTML = '<tr>
-                        <td colspan="6" class="text-center text-muted">No entries</td>
-                    </tr>';
-                    return;
-                    }
+            if (timesheets.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No entries</td></tr>';
+                return;
+            }
 
-                    tbody.innerHTML = timesheets.map(entry => `
+            tbody.innerHTML = timesheets.map(entry => `
                     <tr>
                         <td>${entry.full_name}</td>
                         <td>${formatDate(entry.entry_date)}</td>
@@ -457,283 +522,285 @@
                         </td>
                     </tr>
                     `).join('');
-                    }
+        }
 
-                    // Render employee chart
-                    function renderEmployeeChart(data) {
-                    const ctx = document.getElementById('employeeChart');
+        // Render employee chart
+        function renderEmployeeChart(data) {
+            const ctx = document.getElementById('employeeChart');
 
-                    if (employeeChart) {
-                    employeeChart.destroy();
-                    }
+            if (employeeChart) {
+                employeeChart.destroy();
+            }
 
-                    employeeChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
+            employeeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
                     labels: data.map(d => d.full_name),
                     datasets: [{
-                    label: 'Total Hours',
-                    data: data.map(d => d.total_hours || 0),
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                    borderRadius: 8
+                        label: 'Total Hours',
+                        data: data.map(d => d.total_hours || 0),
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        borderRadius: 8
                     }]
-                    },
-                    options: {
+                },
+                options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     indexAxis: 'y',
                     plugins: {
-                    legend: { display: false }
+                        legend: { display: false }
                     },
                     scales: {
-                    x: {
-                    beginAtZero: true,
-                    ticks: { color: 'rgba(255, 255, 255, 0.7)' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                    },
-                    y: {
-                    ticks: { color: 'rgba(255, 255, 255, 0.7)' },
-                    grid: { display: false }
+                        x: {
+                            beginAtZero: true,
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                            grid: { display: false }
+                        }
                     }
-                    }
-                    }
-                    });
-                    }
+                }
+            });
+        }
 
-                    // Render task chart
-                    function renderTaskChart(data) {
-                    const ctx = document.getElementById('taskChart');
+        // Render task chart
+        function renderTaskChart(data) {
+            const ctx = document.getElementById('taskChart');
 
-                    if (taskChart) {
-                    taskChart.destroy();
-                    }
+            if (taskChart) {
+                taskChart.destroy();
+            }
 
-                    taskChart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
+            taskChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
                     labels: data.map(d => d.task_name),
                     datasets: [{
-                    data: data.map(d => d.total_hours),
-                    backgroundColor: [
-                    'rgba(102, 126, 234, 0.8)',
-                    'rgba(118, 75, 162, 0.8)',
-                    'rgba(245, 87, 108, 0.8)',
-                    'rgba(0, 242, 254, 0.8)',
-                    'rgba(250, 112, 154, 0.8)',
-                    'rgba(254, 225, 64, 0.8)'
-                    ],
-                    borderWidth: 0
+                        data: data.map(d => d.total_hours),
+                        backgroundColor: [
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(118, 75, 162, 0.8)',
+                            'rgba(245, 87, 108, 0.8)',
+                            'rgba(0, 242, 254, 0.8)',
+                            'rgba(250, 112, 154, 0.8)',
+                            'rgba(254, 225, 64, 0.8)'
+                        ],
+                        borderWidth: 0
                     }]
-                    },
-                    options: {
+                },
+                options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                    legend: {
-                    position: 'bottom',
-                    labels: { color: 'rgba(255, 255, 255, 0.7)' }
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: 'rgba(255, 255, 255, 0.7)' }
+                        }
                     }
-                    }
-                    }
-                    });
-                    }
+                }
+            });
+        }
 
-                    // Render daily chart
-                    function renderDailyChart(data) {
-                    const ctx = document.getElementById('dailyChart');
+        // Render daily chart
+        function renderDailyChart(data) {
+            const ctx = document.getElementById('dailyChart');
 
-                    if (dailyChart) {
-                    dailyChart.destroy();
-                    }
+            if (dailyChart) {
+                dailyChart.destroy();
+            }
 
-                    // Get last 14 days
-                    const last14Days = [];
-                    for (let i = 13; i >= 0; i--) {
-                    last14Days.push(getDateDaysAgo(i));
-                    }
+            // Get last 14 days
+            const last14Days = [];
+            for (let i = 13; i >= 0; i--) {
+                last14Days.push(getDateDaysAgo(i));
+            }
 
-                    const chartData = last14Days.map(date => {
-                    const entry = data.find(d => d.entry_date === date);
-                    return entry ? entry.total_hours : 0;
-                    });
+            const chartData = last14Days.map(date => {
+                const entry = data.find(d => d.entry_date === date);
+                return entry ? entry.total_hours : 0;
+            });
 
-                    dailyChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
+            dailyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
                     labels: last14Days.map(d => formatDate(d)),
                     datasets: [{
-                    label: 'Total Hours',
-                    data: chartData,
-                    borderColor: 'rgba(102, 126, 234, 1)',
-                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                    fill: true,
-                    tension: 0.4
+                        label: 'Total Hours',
+                        data: chartData,
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        fill: true,
+                        tension: 0.4
                     }]
-                    },
-                    options: {
+                },
+                options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                    legend: { display: false }
+                        legend: { display: false }
                     },
                     scales: {
-                    y: {
-                    beginAtZero: true,
-                    ticks: { color: 'rgba(255, 255, 255, 0.7)' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                    },
-                    x: {
-                    ticks: { color: 'rgba(255, 255, 255, 0.7)' },
-                    grid: { display: false }
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        x: {
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                            grid: { display: false }
+                        }
                     }
-                    }
-                    }
-                    });
-                    }
+                }
+            });
+        }
 
-                    // User form
-                    document.getElementById('userForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
+        // User form
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-                    const id = document.getElementById('userId').value;
-                    const data = {
-                    username: document.getElementById('userUsername').value,
-                    fullName: document.getElementById('userFullName').value,
-                    password: document.getElementById('userPassword').value,
-                    role: document.getElementById('userRole').value
-                    };
+            const id = document.getElementById('userId').value;
+            const data = {
+                username: document.getElementById('userUsername').value,
+                fullName: document.getElementById('userFullName').value,
+                password: document.getElementById('userPassword').value,
+                role: document.getElementById('userRole').value
+            };
 
-                    try {
-                    if (id) {
+            try {
+                if (id) {
                     await apiCall(`/api/users/${id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(data)
+                        method: 'PUT',
+                        body: JSON.stringify(data)
                     });
                     showAlert('User updated successfully!', 'success');
-                    } else {
+                } else {
                     await apiCall('/api/users', {
-                    method: 'POST',
-                    body: JSON.stringify(data)
+                        method: 'POST',
+                        body: JSON.stringify(data)
                     });
                     showAlert('User created successfully!', 'success');
-                    }
+                }
 
-                    closeModal('userModal');
-                    e.target.reset();
-                    await loadUsers();
-                    } catch (error) {
-                    showAlert(error.message, 'error');
-                    }
-                    });
+                closeModal('userModal');
+                e.target.reset();
+                await loadUsers();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        });
 
-                    // Task form
-                    document.getElementById('taskForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
+        // Task form
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-                    const id = document.getElementById('taskId').value;
-                    const data = {
-                    taskName: document.getElementById('taskName').value,
-                    description: document.getElementById('taskDescription').value,
-                    status: document.getElementById('taskStatus').value
-                    };
+            const id = document.getElementById('taskId').value;
+            const data = {
+                taskName: document.getElementById('taskName').value,
+                description: document.getElementById('taskDescription').value,
+                estimatedHours: parseFloat(document.getElementById('taskEstimatedHours').value) || 0,
+                status: document.getElementById('taskStatus').value
+            };
 
-                    try {
-                    if (id) {
+            try {
+                if (id) {
                     await apiCall(`/api/tasks/${id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(data)
+                        method: 'PUT',
+                        body: JSON.stringify(data)
                     });
                     showAlert('Task updated successfully!', 'success');
-                    } else {
+                } else {
                     await apiCall('/api/tasks', {
-                    method: 'POST',
-                    body: JSON.stringify(data)
+                        method: 'POST',
+                        body: JSON.stringify(data)
                     });
                     showAlert('Task created successfully!', 'success');
-                    }
+                }
 
-                    closeModal('taskModal');
-                    e.target.reset();
-                    await loadTasks();
-                    await loadAnalytics();
-                    } catch (error) {
-                    showAlert(error.message, 'error');
-                    }
-                    });
+                closeModal('taskModal');
+                e.target.reset();
+                await loadTasks();
+                await loadAnalytics();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        });
 
-                    // Edit user
-                    function editUser(user) {
-                    document.getElementById('userModalTitle').textContent = 'Edit User';
-                    document.getElementById('userId').value = user.id;
-                    document.getElementById('userUsername').value = user.username;
-                    document.getElementById('userFullName').value = user.full_name;
-                    document.getElementById('userPassword').value = '';
-                    document.getElementById('userRole').value = user.role;
-                    openModal('userModal');
-                    }
+        // Edit user
+        function editUser(user) {
+            document.getElementById('userModalTitle').textContent = 'Edit User';
+            document.getElementById('userId').value = user.id;
+            document.getElementById('userUsername').value = user.username;
+            document.getElementById('userFullName').value = user.full_name;
+            document.getElementById('userPassword').value = '';
+            document.getElementById('userRole').value = user.role;
+            openModal('userModal');
+        }
 
-                    // Edit task
-                    function editTask(task) {
-                    document.getElementById('taskModalTitle').textContent = 'Edit Task';
-                    document.getElementById('taskId').value = task.id;
-                    document.getElementById('taskName').value = task.task_name;
-                    document.getElementById('taskDescription').value = task.description || '';
-                    document.getElementById('taskStatus').value = task.status;
-                    openModal('taskModal');
-                    }
+        // Edit task
+        function editTask(task) {
+            document.getElementById('taskModalTitle').textContent = 'Edit Task';
+            document.getElementById('taskId').value = task.id;
+            document.getElementById('taskName').value = task.task_name;
+            document.getElementById('taskDescription').value = task.description || '';
+            document.getElementById('taskEstimatedHours').value = task.estimated_hours || 0;
+            document.getElementById('taskStatus').value = task.status;
+            openModal('taskModal');
+        }
 
-                    // Delete user
-                    async function deleteUser(id) {
-                    if (!confirm('Are you sure you want to delete this user?')) return;
+        // Delete user
+        async function deleteUser(id) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
 
-                    try {
-                    await apiCall(`/api/users/${id}`, { method: 'DELETE' });
-                    showAlert('User deleted successfully!', 'success');
-                    await loadUsers();
-                    } catch (error) {
-                    showAlert(error.message, 'error');
-                    }
-                    }
+            try {
+                await apiCall(`/api/users/${id}`, { method: 'DELETE' });
+                showAlert('User deleted successfully!', 'success');
+                await loadUsers();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
 
-                    // Delete task
-                    async function deleteTask(id) {
-                    if (!confirm('Are you sure you want to delete this task?')) return;
+        // Delete task
+        async function deleteTask(id) {
+            if (!confirm('Are you sure you want to delete this task?')) return;
 
-                    try {
-                    await apiCall(`/api/tasks/${id}`, { method: 'DELETE' });
-                    showAlert('Task deleted successfully!', 'success');
-                    await loadTasks();
-                    await loadAnalytics();
-                    } catch (error) {
-                    showAlert(error.message, 'error');
-                    }
-                    }
+            try {
+                await apiCall(`/api/tasks/${id}`, { method: 'DELETE' });
+                showAlert('Task deleted successfully!', 'success');
+                await loadTasks();
+                await loadAnalytics();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
 
-                    // Delete timesheet
-                    async function deleteTimesheet(id) {
-                    if (!confirm('Are you sure you want to delete this entry?')) return;
+        // Delete timesheet
+        async function deleteTimesheet(id) {
+            if (!confirm('Are you sure you want to delete this entry?')) return;
 
-                    try {
-                    await apiCall(`/api/timesheet/${id}`, { method: 'DELETE' });
-                    showAlert('Entry deleted successfully!', 'success');
-                    await loadTimesheets();
-                    await loadAnalytics();
-                    } catch (error) {
-                    showAlert(error.message, 'error');
-                    }
-                    }
+            try {
+                await apiCall(`/api/timesheet/${id}`, { method: 'DELETE' });
+                showAlert('Entry deleted successfully!', 'success');
+                await loadTimesheets();
+                await loadAnalytics();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
 
-                    // Reset modals when closed
-                    document.querySelectorAll('.modal').forEach(modal => {
-                    modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
+        // Reset modals when closed
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
                     modal.classList.remove('active');
-                    }
-                    });
-                    });
+                }
+            });
+        });
 
-                    init();
-                    </script>
+        init();
+    </script>
 </body>
 
 </html>

@@ -5,9 +5,14 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "migrate": "node database/migrate.js"
   },
-  "keywords": ["timesheet", "task-tracking", "employee-management"],
+  "keywords": [
+    "timesheet",
+    "task-tracking",
+    "employee-management"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
